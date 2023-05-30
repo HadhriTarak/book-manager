@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+    library-dev:
+        container_name: library_dev
+        image: library-dev:1.0.0
+        build:
+            context: ./library
+            target: development
+            dockerfile: ./Dockerfile
+        command: npm run start:debug
+        ports:
+            - 3000:3000
+            - 9229:9229
+        networks:
+            - book-manager-network
+            - rabbitmq-network
+        restart: unless-stopped
+        depends_on:
+            - mongoApi
+            - rabbitmq
+    statistics-dev:
+        container_name: statistics_dev
+        image: statistics-dev:1.0.0
+        build:
+            context: ./statistics
+            target: development
+            dockerfile: ./Dockerfile
+        command: npm run start:debug
+        ports:
+            - 3001:3000
+            - 9230:9229
+        networks:
+            - book-manager-network
+            - rabbitmq-network
+        restart: unless-stopped
+        depends_on:
+            - mongoStatistics
+            - rabbitmq
+    rabbitmq:
+        container_name: rabbitmq
+        image: rabbitmq:3.8-management
+        ports:
+            - 5672:5672
+            - 15672:15672
+        volumes:
+            - ~/.docker-conf/rabbitmq/data/:/var/lib/rabbitmq/
+            - ~/.docker-conf/rabbitmq/log/:/var/log/rabbitmq
+        networks:
+            - rabbitmq-network
+    mongoStatistics:
+        image: mongo
+        restart: always
+        environment:
+            MONGO_INITDB_ROOT_USERNAME: root
+            MONGO_INITDB_ROOT_PASSWORD: root
+            MONGO_INITDB_DATABASE: statistics-db
+        networks: 
+            - book-manager-network
+        ports:
+            - '27017:27017'
+        volumes: 
+            - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+            - ./data:/data/library/db
+    mongoApi:
+        image: mongo
+        restart: always
+        environment:
+            MONGO_INITDB_ROOT_USERNAME: root
+            MONGO_INITDB_ROOT_PASSWORD: root
+            MONGO_INITDB_DATABASE: library-db
+        networks: 
+            - book-manager-network
+        ports:
+            - '27016:27017'
+        volumes: 
+            - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+            - ./data:/data/statistics/db
+    nginx:
+        build: ./nginx
+        ports:
+            - '80:80'
+        depends_on:
+            - library-dev
+            - statistics-dev
+
+networks:
+    book-manager-network:
+        driver: bridge
+    rabbitmq-network:
+        driver: bridge

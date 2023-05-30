@@ -1,0 +1,8 @@
+library/node_modules/
+library/dist/
+statistics/node_modules/
+statistics/dist/
+statistics/jobs-dist/
+config/
+coverage/
+data/
